@@ -1,0 +1,5 @@
+{
+  "name": "Research Rabbit Hole",
+  "description": "A concept mapper that takes an article or research question and generates a visual mind map of key concepts, entities, and their relationships using Gemini and D3.js.",
+  "requestFramePermissions": []
+}
