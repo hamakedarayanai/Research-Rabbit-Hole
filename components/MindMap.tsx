@@ -10,6 +10,7 @@ import {
   forceCenter,
   zoom,
   drag,
+  zoomIdentity,
   type Simulation,
   type D3DragEvent,
   type SimulationNodeDatum,
@@ -102,7 +103,7 @@ const MindMap = forwardRef<MindMapHandles, MindMapProps>(({ data }, ref) => {
           a.href = pngUrl;
           a.download = "concept-map.png";
           document.body.appendChild(a);
-          a.click();
+a.click();
           document.body.removeChild(a);
       };
 
@@ -187,6 +188,11 @@ const MindMap = forwardRef<MindMapHandles, MindMapProps>(({ data }, ref) => {
         .style("text-shadow", "0 1px 0 #000, 1px 0 0 #000, 0 -1px 0 #000, -1px 0 0 #000")
         .text(d => d.label);
 
+    const zoomBehavior = zoom<SVGSVGElement, unknown>().on('zoom', (event) => {
+        svgContainer.attr('transform', event.transform);
+    });
+    svg.call(zoomBehavior);
+
     node.on('mouseover', (event, d) => {
       const highlightColor = '#22d3ee'; // cyan-400
 
@@ -197,7 +203,7 @@ const MindMap = forwardRef<MindMapHandles, MindMapProps>(({ data }, ref) => {
       // Enhance hovered node and its neighbors
       node
           .style('opacity', n => isNeighborNode(n) ? 1 : 0.15)
-          .attr('stroke', n => isNeighborNode(n) ? highlightColor : '#fff')
+          .attr('stroke', n => n.id === d.id ? highlightColor : (node.select(function(thisNode) { return thisNode === n ? this.getAttribute('stroke') : null}) || '#fff'))
           .attr('stroke-width', n => n.id === d.id ? 2.5 : 1.5);
 
       nodeLabel
@@ -215,8 +221,8 @@ const MindMap = forwardRef<MindMapHandles, MindMapProps>(({ data }, ref) => {
         // Reset styles
         node
             .style('opacity', 1)
-            .attr('stroke', '#fff')
-            .attr('stroke-width', 1.5);
+            .attr('stroke', n => (select(this).attr('data-selected') === 'true' ? '#f59e0b' : '#fff'))
+            .attr('stroke-width', n => (select(this).attr('data-selected') === 'true' ? 3 : 1.5));
         nodeLabel
             .style('opacity', 1);
         link
@@ -224,6 +230,20 @@ const MindMap = forwardRef<MindMapHandles, MindMapProps>(({ data }, ref) => {
             .style('stroke', '#999');
         linkLabel
             .style('opacity', 1);
+    }).on('click', (event, d) => {
+        // Center on node
+        const transform = zoomIdentity
+            .translate(width / 2, height / 2)
+            .scale(1.2) // Zoom in a bit
+            .translate(-d.x!, -d.y!);
+    
+        svg.transition().duration(750).call(zoomBehavior.transform, transform);
+    
+        // Highlight selected node
+        node
+            .attr('stroke', n => n.id === d.id ? '#f59e0b' : '#fff') // amber-500
+            .attr('stroke-width', n => n.id === d.id ? 3 : 1.5)
+            .attr('data-selected', n => n.id === d.id ? 'true' : 'false');
     });
         
     function ticked() {
@@ -245,11 +265,6 @@ const MindMap = forwardRef<MindMapHandles, MindMapProps>(({ data }, ref) => {
           .attr("x", d => ((d.source as D3Node).x! + (d.target as D3Node).x!) / 2)
           .attr("y", d => ((d.source as D3Node).y! + (d.target as D3Node).y!) / 2);
     }
-    
-    const zoomBehavior = zoom<SVGSVGElement, unknown>().on('zoom', (event) => {
-        svgContainer.attr('transform', event.transform);
-    });
-    svg.call(zoomBehavior);
 
     function dragHandler(simulation: Simulation<D3Node, undefined>) {
         function dragstarted(event: D3DragEvent<SVGCircleElement, D3Node, D3Node>, d: D3Node) {
